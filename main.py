@@ -49,6 +49,3 @@ while True:
 
 cv2.destroyAllWindows()
 
-#測試
-
-
