@@ -149,3 +149,5 @@ show_menu(window_name)
 show_guide(window_name)
 beach_game(window_name)
 cv2.destroyAllWindows()
+
+#我們今生注定是倉鼠
