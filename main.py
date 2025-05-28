@@ -111,11 +111,11 @@ def beach_game(window_name):
     total_width = window_width * len(backgrounds)
     long_bg = np.zeros((window_height, total_width, 3), dtype=np.uint8)
     for i, bg in enumerate(backgrounds):
-        long_bg[:, i*window_width:(i+1)*window_width] = bg
+        long_bg[:, i * window_width:(i + 1) * window_width] = bg
 
     # 加载角色和垃圾图像
     std = cv2.imread('img/std.png', cv2.IMREAD_UNCHANGED)
-    std = cv2.resize(std, None, fx=1/8, fy=1/8, interpolation=cv2.INTER_AREA)
+    std = cv2.resize(std, None, fx=1 / 8, fy=1 / 8, interpolation=cv2.INTER_AREA)
     std_rgb = std[..., :3]
     alpha_mask = std[..., 3].astype(float) / 255.0
 
@@ -143,18 +143,44 @@ def beach_game(window_name):
         std_h, std_w = new_h, new_w
 
     # 定义随机垃圾位置函数
-    def random_garbage_pos(view_offset):
-        # 在可见范围内的随机位置
-        screen_x = random.randint(50, window_width - garbage_w - 50)
-        world_x = min(total_width - garbage_w, screen_x + view_offset)
-        y = random.randint(400, window_height - garbage_h - 10)
+    def random_garbage_pos(min_x, max_x):
+        # 在指定范围内的随机位置
+        world_x = random.randint(min_x, max_x - garbage_w)
+        y = random.randint(300, window_height - garbage_h - 10)
         return world_x, y
 
+    # 初始化30个垃圾
+    garbage_items = []
+    min_dist = 150
+    min_dist_sq = min_dist * min_dist
+    garbage_count = 35
+    # 为每张背景图分配垃圾
+    garbage_per_bg = garbage_count // len(backgrounds)
+    for bg_idx in range(len(backgrounds)):
+        bg_start_x = bg_idx * window_width
+        bg_end_x = (bg_idx + 1) * window_width
+        for i in range(garbage_per_bg):
+            # 生成位置，确保与已有垃圾最小距离
+            while True:
+                x, y = random_garbage_pos(bg_start_x, bg_end_x)
+                if all((x - item['x'])**2 + (y - item['y'])**2 >= min_dist_sq for item in garbage_items):
+                    break
+            garbage_items.append({"x": x, "y": y, "visible": True})
+
+    # 添加剩余的垃圾（如果不能平均分配）
+    remaining = garbage_count - (garbage_per_bg * len(backgrounds))
+    for i in range(remaining):
+        while True:
+            x, y = random_garbage_pos(0, total_width)
+            if all((x - item['x'])**2 + (y - item['y'])**2 >= min_dist_sq for item in garbage_items):
+                break
+        garbage_items.append({"x": x, "y": y, "visible": True})
+
     # 定义游戏区域的边界
-    free_move_start = 0                            # 自由移动开始位置
-    fixed_char_start = window_width // 2           # 角色固定位置开始（background1的后半部分）
+    free_move_start = 0  # 自由移动开始位置
+    fixed_char_start = window_width // 2  # 角色固定位置开始（background1的后半部分）
     fixed_char_end = total_width - window_width // 2  # 角色固定位置结束（background5的前半部分）
-    free_move_end = total_width                    # 自由移动结束位置
+    free_move_end = total_width  # 自由移动结束位置
 
     # 视图偏移量（用于滚动）
     view_offset = 0
@@ -179,11 +205,8 @@ def beach_game(window_name):
     # 注册鼠标回调
     cv2.setMouseCallback(window_name, mouse_callback)
 
-    garbage_x, garbage_y = random_garbage_pos(view_offset)
     step = 5  # 移动步长
     score = 0
-    garbage_visible = True
-    garbage_timer = 0
 
     while True:
         # 检查是否应该进入回收区
@@ -255,8 +278,8 @@ def beach_game(window_name):
                 if width > 0 and height > 0:
                     for c in range(3):
                         view_frame[y:end_y, x:end_x, c] = (
-                            gc_alpha[:height, :width] * gc[:height, :width, c] +
-                            (1 - gc_alpha[:height, :width]) * view_frame[y:end_y, x:end_x, c]
+                                gc_alpha[:height, :width] * gc[:height, :width, c] +
+                                (1 - gc_alpha[:height, :width]) * view_frame[y:end_y, x:end_x, c]
                         ).astype(np.uint8)
         else:
             # 常规游戏区域的绘制
@@ -284,27 +307,36 @@ def beach_game(window_name):
                 character_screen_x = window_width // 2
                 view_offset = character_world_x - character_screen_x
 
-            # 绘制垃圾（如果可见且在当前视窗内）
-            if garbage_visible:
-                # 计算垃圾在屏幕上的位置
-                garbage_screen_x = garbage_x - view_offset
-                if 0 <= garbage_screen_x < window_width:
-                    # 确保不会超出屏幕边界
-                    visible_x_end = min(window_width, garbage_screen_x + garbage_w)
-                    visible_width = visible_x_end - garbage_screen_x
+            # 绘制所有可见的垃圾
+            for garbage_item in garbage_items:
+                if garbage_item["visible"]:
+                    # 计算垃圾在屏幕上的位置
+                    garbage_screen_x = garbage_item["x"] - view_offset
+                    garbage_y = garbage_item["y"]
 
-                    # 确保不会超出底部
-                    visible_y_end = min(window_height, garbage_y + garbage_h)
-                    garbage_y_height = visible_y_end - garbage_y
+                    # 只绘制在当前视窗内的垃圾
+                    if -garbage_w < garbage_screen_x < window_width:
+                        # 确保不会超出屏幕边界
+                        visible_x_start = max(0, garbage_screen_x)
+                        garbage_x_offset = visible_x_start - garbage_screen_x
+                        visible_x_end = min(window_width, garbage_screen_x + garbage_w)
+                        visible_width = visible_x_end - visible_x_start
 
-                    if visible_width > 0 and garbage_y_height > 0:
-                        for c in range(3):
-                            view_frame[garbage_y:visible_y_end, garbage_screen_x:visible_x_end, c] = (
-                                garbage_alpha[:garbage_y_height, :visible_width] *
-                                garbage_rgb[:garbage_y_height, :visible_width, c] +
-                                (1 - garbage_alpha[:garbage_y_height, :visible_width]) *
-                                view_frame[garbage_y:visible_y_end, garbage_screen_x:visible_x_end, c]
-                            ).astype(np.uint8)
+                        # 确保不会超出底部
+                        visible_y_end = min(window_height, garbage_y + garbage_h)
+                        garbage_y_height = visible_y_end - garbage_y
+
+                        if visible_width > 0 and garbage_y_height > 0:
+                            for c in range(3):
+                                view_frame[garbage_y:visible_y_end, visible_x_start:visible_x_end, c] = (
+                                        garbage_alpha[:garbage_y_height,
+                                        garbage_x_offset:garbage_x_offset + visible_width] *
+                                        garbage_rgb[:garbage_y_height,
+                                        garbage_x_offset:garbage_x_offset + visible_width, c] +
+                                        (1 - garbage_alpha[:garbage_y_height,
+                                             garbage_x_offset:garbage_x_offset + visible_width]) *
+                                        view_frame[garbage_y:visible_y_end, visible_x_start:visible_x_end, c]
+                                ).astype(np.uint8)
 
             # 绘制角色
             character_y_end = min(window_height, character_y + std_h)
@@ -315,9 +347,10 @@ def beach_game(window_name):
 
             if character_height > 0:  # 只要角色高度有效就绘制，移除了对X位置的限制检查
                 for c in range(3):
-                    view_frame[character_y:character_y_end, character_screen_x:character_screen_x+std_w, c] = (
-                        alpha_mask[:character_height, :] * std_rgb[:character_height, :, c] +
-                        (1 - alpha_mask[:character_height, :]) * view_frame[character_y:character_y_end, character_screen_x:character_screen_x+std_w, c]
+                    view_frame[character_y:character_y_end, character_screen_x:character_screen_x + std_w, c] = (
+                            alpha_mask[:character_height, :] * std_rgb[:character_height, :, c] +
+                            (1 - alpha_mask[:character_height, :]) * view_frame[character_y:character_y_end,
+                                                                     character_screen_x:character_screen_x + std_w, c]
                     ).astype(np.uint8)
 
         # 显示分数
@@ -366,25 +399,21 @@ def beach_game(window_name):
                 view_offset = max_view_offset - 100
 
         # 碰撞检测（只在非回收区时）
-        if not in_recycle_area and garbage_visible:
-            garbage_screen_x = garbage_x - view_offset
-            if (0 <= garbage_screen_x < window_width and
-                abs(character_screen_x + std_w/2 - (garbage_screen_x + garbage_w/2)) < (std_w + garbage_w) / 2 and
-                abs(character_y + std_h/2 - (garbage_y + garbage_h/2)) < (std_h + garbage_h) / 2):
-                score += 1
-                garbage_visible = False
-                garbage_timer = cv2.getTickCount()
-                ding_sound.play()  # 播放音效
+        if not in_recycle_area:
+            for idx, garbage_item in enumerate(garbage_items):
+                if garbage_item["visible"]:
+                    garbage_screen_x = garbage_item["x"] - view_offset
+                    garbage_y = garbage_item["y"]
 
-        # 1秒后垃圾再出现
-        if not in_recycle_area and not garbage_visible:
-            now = cv2.getTickCount()
-            elapsed = (now - garbage_timer) / cv2.getTickFrequency()
-            if elapsed >= 1.0:
-                garbage_x, garbage_y = random_garbage_pos(view_offset)
-                garbage_visible = True
-
-
+                    # 只检测在当前视窗内的垃圾
+                    if -garbage_w < garbage_screen_x < window_width:
+                        if (abs(character_screen_x + std_w / 2 - (garbage_screen_x + garbage_w / 2)) < (
+                                std_w + garbage_w) / 2 and
+                                abs(character_y + std_h / 2 - (garbage_y + garbage_h / 2)) < (std_h + garbage_h) / 2):
+                            score += 1
+                            garbage_items[idx]["visible"] = False
+                            ding_sound.play()  # 播放音效
+                            break  # 每帧只处理一个碰撞
 ######
 
 # 主程式
@@ -395,3 +424,4 @@ beach_game(window_name)
 cv2.destroyAllWindows()
 
 # 我們今生注定是倉鼠
+
