@@ -9,7 +9,7 @@ WINDOW_HEIGHT = 900
 
 def show_menu(window_name):
     background = cv2.imread('background/background1.jpg')
-    menu_img = cv2.imread('img/menu.png')
+    menu_img = cv2.imread('img/beach.png')
 
     # 将背景和菜单图片都调整为窗口大小
     background = cv2.resize(background, (WINDOW_WIDTH, WINDOW_HEIGHT), interpolation=cv2.INTER_AREA)
@@ -39,9 +39,9 @@ def show_guide(window_name):
             'right') or keyboard.is_pressed('d'):
         cv2.waitKey(10)
     guide_imgs = [
-        cv2.imread('img/guide.png'),
-        cv2.imread('img/guide2.png'),
-        cv2.imread('img/guide3.png')
+        cv2.imread('img/2.png'),
+        cv2.imread('img/3.png'),
+        cv2.imread('img/4.png')
     ]
     # 直接调整为窗口大小，而不是背景图片大小
     guide_imgs = [cv2.resize(img, (WINDOW_WIDTH, WINDOW_HEIGHT), interpolation=cv2.INTER_AREA) for img in guide_imgs]
