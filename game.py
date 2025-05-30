@@ -4,6 +4,7 @@ import random
 import keyboard
 import pygame
 from assets import load_images
+import os
 
 
 def beach_game(window_name):
@@ -60,6 +61,22 @@ def beach_game(window_name):
         y = random.randint(600, window_height - garbage_h - 10)
         return world_x, y
 
+    # 新增垃圾物件類別
+    class Garbage:
+        def __init__(self, image, x, y):
+            self.image = image
+            self.x = x
+            self.y = y
+            self.visible = True
+
+    # 加載垃圾圖片
+    garbage_images = []
+    garbage_dir = 'img/garbage'
+    for filename in os.listdir(garbage_dir):
+        if filename.endswith('.png'):
+            img_path = os.path.join(garbage_dir, filename)
+            garbage_images.append(cv2.imread(img_path, cv2.IMREAD_UNCHANGED))
+
     # 初始化30个垃圾
     garbage_items = []
     min_dist = 150
@@ -74,18 +91,20 @@ def beach_game(window_name):
             # 生成位置，确保与已有垃圾最小距离
             while True:
                 x, y = random_garbage_pos(bg_start_x, bg_end_x)
-                if all((x - item['x']) ** 2 + (y - item['y']) ** 2 >= min_dist_sq for item in garbage_items):
+                if all((x - item.x) ** 2 + (y - item.y) ** 2 >= min_dist_sq for item in garbage_items):
                     break
-            garbage_items.append({"x": x, "y": y, "visible": True})
+            garbage_image = random.choice(garbage_images)
+            garbage_items.append(Garbage(garbage_image, x, y))
 
     # 添加剩余的垃圾（如果不能平均分配）
     remaining = garbage_count - (garbage_per_bg * len(backgrounds))
     for i in range(remaining):
         while True:
             x, y = random_garbage_pos(0, total_width)
-            if all((x - item['x']) ** 2 + (y - item['y']) ** 2 >= min_dist_sq for item in garbage_items):
+            if all((x - item.x) ** 2 + (y - item.y) ** 2 >= min_dist_sq for item in garbage_items):
                 break
-        garbage_items.append({"x": x, "y": y, "visible": True})
+        garbage_image = random.choice(garbage_images)
+        garbage_items.append(Garbage(garbage_image, x, y))
 
     # 定义游戏区域的边界
     free_move_start = 0  # 自由移动开始位置
@@ -220,33 +239,35 @@ def beach_game(window_name):
 
             # 绘制所有可见的垃圾
             for garbage_item in garbage_items:
-                if garbage_item["visible"]:
+                if garbage_item.visible:
+                    # 确保每個垃圾物件使用其自身的圖片和透明度通道進行渲染
+                    garbage_image = garbage_item.image
+                    garbage_alpha = garbage_image[:, :, 3] / 255.0  # 提取 alpha 通道
+                    garbage_rgb = garbage_image[:, :, :3]  # 提取 RGB 通道
+
                     # 计算垃圾在屏幕上的位置
-                    garbage_screen_x = garbage_item["x"] - view_offset
-                    garbage_y = garbage_item["y"]
+                    garbage_screen_x = garbage_item.x - view_offset
+                    garbage_y = garbage_item.y
 
                     # 只绘制在当前视窗内的垃圾
-                    if -garbage_w < garbage_screen_x < window_width:
+                    if -garbage_image.shape[1] < garbage_screen_x < window_width:
                         # 确保不会超出屏幕边界
                         visible_x_start = max(0, garbage_screen_x)
                         garbage_x_offset = visible_x_start - garbage_screen_x
-                        visible_x_end = min(window_width, garbage_screen_x + garbage_w)
+                        visible_x_end = min(window_width, garbage_screen_x + garbage_image.shape[1])
                         visible_width = visible_x_end - visible_x_start
 
                         # 确保不会超出底部
-                        visible_y_end = min(window_height, garbage_y + garbage_h)
+                        visible_y_end = min(window_height, garbage_y + garbage_image.shape[0])
                         garbage_y_height = visible_y_end - garbage_y
 
                         if visible_width > 0 and garbage_y_height > 0:
                             for c in range(3):
                                 view_frame[garbage_y:visible_y_end, visible_x_start:visible_x_end, c] = (
-                                        garbage_alpha[:garbage_y_height,
-                                        garbage_x_offset:garbage_x_offset + visible_width] *
-                                        garbage_rgb[:garbage_y_height,
-                                        garbage_x_offset:garbage_x_offset + visible_width, c] +
-                                        (1 - garbage_alpha[:garbage_y_height,
-                                             garbage_x_offset:garbage_x_offset + visible_width]) *
-                                        view_frame[garbage_y:visible_y_end, visible_x_start:visible_x_end, c]
+                                    garbage_alpha[:garbage_y_height, garbage_x_offset:garbage_x_offset + visible_width] *
+                                    garbage_rgb[:garbage_y_height, garbage_x_offset:garbage_x_offset + visible_width, c] +
+                                    (1 - garbage_alpha[:garbage_y_height, garbage_x_offset:garbage_x_offset + visible_width]) *
+                                    view_frame[garbage_y:visible_y_end, visible_x_start:visible_x_end, c]
                                 ).astype(np.uint8)
 
             # 绘制角色
@@ -312,9 +333,9 @@ def beach_game(window_name):
         # 碰撞检测（只在非回收区时）
         if not in_recycle_area:
             for idx, garbage_item in enumerate(garbage_items):
-                if garbage_item["visible"]:
-                    garbage_screen_x = garbage_item["x"] - view_offset
-                    garbage_y = garbage_item["y"]
+                if garbage_item.visible:
+                    garbage_screen_x = garbage_item.x - view_offset
+                    garbage_y = garbage_item.y
 
                     # 只检测在当前视窗内的垃圾
                     if -garbage_w < garbage_screen_x < window_width:
@@ -322,6 +343,6 @@ def beach_game(window_name):
                                 std_w + garbage_w) / 2 and
                                 abs(character_y + std_h / 2 - (garbage_y + garbage_h / 2)) < (std_h + garbage_h) / 2):
                             score += 1
-                            garbage_items[idx]["visible"] = False
+                            garbage_items[idx].visible = False
                             ding_sound.play()  # 播放音效
                             break  # 每帧只处理一个碰撞
