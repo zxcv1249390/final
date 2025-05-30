@@ -50,6 +50,8 @@ def load_images(window_width, window_height):
     # 初始化pygame mixer
     pygame.mixer.init()
     ding_sound = pygame.mixer.Sound('sound/ding.wav')
+    wrong_sound = pygame.mixer.Sound('sound/wrong.wav')
+    button_sound = pygame.mixer.Sound('sound/button.wav')
 
     return {
         'backgrounds': backgrounds,
@@ -59,5 +61,7 @@ def load_images(window_width, window_height):
         'alpha_mask': alpha_mask,
         'garbage_rgb': garbage_rgb,
         'garbage_alpha': garbage_alpha,
-        'ding_sound': ding_sound
+        'ding_sound': ding_sound,
+        'wrong_sound': wrong_sound,
+        'button_sound': button_sound
     }

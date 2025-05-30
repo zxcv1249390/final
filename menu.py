@@ -1,17 +1,20 @@
 import cv2
 import numpy as np
 import keyboard
+import pygame
 
-# 窗口大小常量（与game.py中保持一致）
 WINDOW_WIDTH = 1500
 WINDOW_HEIGHT = 900
+
+# 初始化音效
+pygame.mixer.init()
+button_sound = pygame.mixer.Sound('sound/button.wav')
 
 
 def show_menu(window_name):
     background = cv2.imread('background/background1.jpg')
     menu_img = cv2.imread('img/beach.png')
 
-    # 将背景和菜单图片都调整为窗口大小
     background = cv2.resize(background, (WINDOW_WIDTH, WINDOW_HEIGHT), interpolation=cv2.INTER_AREA)
     menu_img = cv2.resize(menu_img, (WINDOW_WIDTH, WINDOW_HEIGHT), interpolation=cv2.INTER_AREA)
 
@@ -24,9 +27,10 @@ def show_menu(window_name):
         menu_bg = menu_img
     cv2.imshow(window_name, menu_bg)
     cv2.waitKey(1)
-    # 等待玩家按下任意鍵開始
+
     while True:
         if keyboard.is_pressed('space') or keyboard.is_pressed('enter'):
+            button_sound.play()  # ▶ 播放音效
             break
         if keyboard.is_pressed('q'):
             exit()
@@ -34,26 +38,28 @@ def show_menu(window_name):
 
 
 def show_guide(window_name):
-    # 等待玩家放開所有按鍵，避免殘留按鍵直接觸發
     while keyboard.is_pressed('space') or keyboard.is_pressed('enter') or keyboard.is_pressed(
             'right') or keyboard.is_pressed('d'):
         cv2.waitKey(10)
+
     guide_imgs = [
         cv2.imread('img/2.png'),
         cv2.imread('img/3.png'),
         cv2.imread('img/4.png')
     ]
-    # 直接调整为窗口大小，而不是背景图片大小
     guide_imgs = [cv2.resize(img, (WINDOW_WIDTH, WINDOW_HEIGHT), interpolation=cv2.INTER_AREA) for img in guide_imgs]
     idx = 0
+
     while True:
         cv2.imshow(window_name, guide_imgs[idx])
         cv2.waitKey(1)
         if keyboard.is_pressed('right') or keyboard.is_pressed('d'):
             idx = (idx + 1) % 3
+            button_sound.play()  # ▶ 播放音效
             while keyboard.is_pressed('right') or keyboard.is_pressed('d'):
                 cv2.waitKey(10)
         if keyboard.is_pressed('space') or keyboard.is_pressed('enter'):
+            button_sound.play()  # ▶ 播放音效
             break
         if keyboard.is_pressed('q'):
             exit()

@@ -18,6 +18,7 @@ def beach_game(window_name):
     garbage_rgb = assets['garbage_rgb']
     garbage_alpha = assets['garbage_alpha']
     ding_sound = assets['ding_sound']
+    wrong_sound = assets['wrong_sound']
 
     std_h, std_w = std_rgb.shape[:2]
     garbage_h, garbage_w = garbage_rgb.shape[:2]
@@ -58,7 +59,6 @@ def beach_game(window_name):
             self.visible = True
             self.category = category
 
-    # 加載垃圾並分類
     garbage_images = []
     garbage_dir = 'img/garbage'
     for filename in os.listdir(garbage_dir):
@@ -74,11 +74,13 @@ def beach_game(window_name):
             else:
                 category = 'other'
             garbage_images.append((image, category))
+
     garbage_items = []
     min_dist = 150
     min_dist_sq = min_dist * min_dist
     garbage_count = 35
     garbage_per_bg = garbage_count // len(backgrounds)
+
     for bg_idx in range(len(backgrounds)):
         bg_start_x = bg_idx * window_width
         bg_end_x = (bg_idx + 1) * window_width
@@ -115,9 +117,11 @@ def beach_game(window_name):
 
     mouse_x, mouse_y = 0, 0
     hovered_can_index = -1
+    classification_message = ''
+    message_counter = 0
 
     def mouse_callback(event, x, y, flags, param):
-        nonlocal mouse_x, mouse_y, hovered_can_index, collected_garbage, score
+        nonlocal mouse_x, mouse_y, hovered_can_index, collected_garbage, score, classification_message, message_counter
         mouse_x, mouse_y = x, y
 
         if in_recycle_area and event == cv2.EVENT_LBUTTONDOWN:
@@ -127,13 +131,19 @@ def beach_game(window_name):
                 if current_item.category == can_category:
                     score += 1
                     ding_sound.play()
+                    classification_message = 'Correct! +1'
                 else:
-                    print("分類錯誤！")  # 可改成顯示提示畫面
+                    score = max(0, score - 1)
+                    wrong_sound.play()
+                    classification_message = 'Wrong! -1'
+                message_counter = 60
 
     cv2.setMouseCallback(window_name, mouse_callback)
 
     step = 5
     score = 0
+    font = cv2.FONT_HERSHEY_SIMPLEX
+
     while True:
         if view_offset >= max_view_offset and character_x >= window_width - std_w - 10:
             in_recycle_area = True
@@ -145,17 +155,12 @@ def beach_game(window_name):
         if in_recycle_area:
             view_frame[:] = recycle_bg
             hovered_can_index = -1
-            for i, (x, y) in enumerate(garbage_can_positions):
-                gc = garbage_cans[i]
-                gc_h, gc_w = gc.shape[:2]
-                if x <= mouse_x < x + gc_w and y <= mouse_y < y + gc_h:
-                    hovered_can_index = i
-                    break
+            category_names = ['Plastic', 'Paper', 'Metal', 'Other']
 
             for i, (x, y) in enumerate(garbage_can_positions):
                 gc = garbage_cans[i]
                 gc_alpha = gc[..., 3].astype(float) / 255.0
-                scale_factor = 1.2 if i == hovered_can_index else 1.0
+                scale_factor = 1.2 if x <= mouse_x < x + gc.shape[1] and y <= mouse_y < y + gc.shape[0] else 1.0
                 if scale_factor > 1.0:
                     original_height, original_width = gc.shape[:2]
                     new_width = int(original_width * scale_factor)
@@ -167,6 +172,7 @@ def beach_game(window_name):
                     y = y - y_offset
                     gc = resized_gc
                     gc_alpha = gc[..., 3].astype(float) / 255.0
+                    hovered_can_index = i
 
                 gc_h, gc_w = gc.shape[:2]
                 if x < 0:
@@ -192,7 +198,13 @@ def beach_game(window_name):
                             (1 - gc_alpha[:height, :width]) * view_frame[y:end_y, x:end_x, c]
                         ).astype(np.uint8)
 
-            # 顯示目前持有的垃圾圖示
+                # Draw category name
+                text = category_names[i]
+                text_size, _ = cv2.getTextSize(text, font, 1, 2)
+                text_x = x + (gc_w - text_size[0]) // 2
+                text_y = y - 10
+                cv2.putText(view_frame, text, (text_x, text_y), font, 1, (255, 255, 255), 2, cv2.LINE_AA)
+
             if collected_garbage:
                 preview = collected_garbage[0].image
                 preview_rgb = preview[..., :3]
@@ -204,6 +216,7 @@ def beach_game(window_name):
                         preview_alpha * preview_rgb[:, :, c] +
                         (1 - preview_alpha) * view_frame[y0:y0+ph, x0:x0+pw, c]
                     ).astype(np.uint8)
+
         else:
             view_offset = max(0, min(view_offset, max_view_offset))
             view_frame[:] = long_bg[:, view_offset:view_offset + window_width]
@@ -253,10 +266,18 @@ def beach_game(window_name):
                     view_frame[character_y:character_y_end, character_screen_x:character_screen_x + std_w, c] = (
                         alpha_mask[:character_height, :] * std_rgb[:character_height, :, c] +
                         (1 - alpha_mask[:character_height, :]) * view_frame[character_y:character_y_end,
-                                                                 character_screen_x:character_screen_x + std_w, c]
+                                                                     character_screen_x:character_screen_x + std_w, c]
                     ).astype(np.uint8)
 
-        cv2.putText(view_frame, f"Score: {score}", (40, 120), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 4, cv2.LINE_AA)
+        # 顯示分數
+        cv2.putText(view_frame, f"Score: {score}", (40, 120), font, 2, (0, 0, 255), 4, cv2.LINE_AA)
+
+        # 顯示分類結果提示
+        if message_counter > 0:
+            color = (0, 255, 0) if 'Correct' in classification_message else (0, 0, 255)
+            cv2.putText(view_frame, classification_message, (40, 180), font, 2, color, 4, cv2.LINE_AA)
+            message_counter -= 1
+
         cv2.imshow(window_name, view_frame)
 
         key = cv2.waitKey(10)
@@ -286,7 +307,7 @@ def beach_game(window_name):
                 character_x = window_width // 2
                 view_offset = character_world_x - character_x
         else:
-            if left:
+            if left and not collected_garbage:
                 in_recycle_area = False
                 view_offset = max_view_offset - 100
 
