@@ -1,3 +1,5 @@
+#main.py
+
 import cv2
 from menu import show_menu, show_guide
 from game import beach_game
