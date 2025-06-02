@@ -601,7 +601,6 @@ def main():
             print(f"警告: {path} 不存在。請在程式相同目錄下放置該圖片，或者程式將會使用預設灰色背景代替。")
             temp_img = np.full((810, 1350, 3), (150, 150, 150), dtype=np.uint8)
             cv2.putText(temp_img, f"{key.replace('_open', '').replace('_close', '')} Bin Placeholder", (400, 400), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
-            cv2.imwrite(path, temp_img)
             
     # 確保 img/X3garbage 資料夾存在
     if not os.path.exists('img/X3garbage'):
