@@ -19,7 +19,7 @@ def load_images(window_width, window_height):
         default_bg = np.full((window_height, window_width, 3), (0, 128, 255), dtype=np.uint8)
         backgrounds = [default_bg]
 
-    # 載入回收背景
+    # 載入回收背景 (這個可能被 recycle_backgrounds 字典中的特寫圖取代，但作為備用保留)
     recycle_bg = cv2.imread('background/recycle_background.jpg')
     if recycle_bg is not None:
         recycle_bg = cv2.resize(recycle_bg, (window_width, window_height))
@@ -60,7 +60,7 @@ def load_images(window_width, window_height):
     # 設定初始幀
     std_rgb, alpha_mask = std_frames_left[0]
 
-    # 載入垃圾圖像 (這只是預設，實際會從 matrix 載入)
+    # 載入垃圾圖像 (這只是預設，實際會從 matrix 載入，這裡保留只是為了預設值)
     garbage = cv2.imread('img/garbage/cola.png', cv2.IMREAD_UNCHANGED)
     if garbage is not None:
         garbage = cv2.resize(garbage, None, fx=0.5, fy=0.5)
@@ -139,31 +139,32 @@ def beach_game(window_name):
                  recycle_backgrounds[key] = np.full((window_height, window_width, 3), (0, 0, 0), dtype=np.uint8)
 
 
-    # 載入指定的垃圾桶特寫背景
+    # 載入指定的垃圾桶特寫背景 (這是在沒有匹配背景時的通用備用)
     recycle_custom_bg = cv2.imread('recycle_background/garbage_can_close.jpg')
     if recycle_custom_bg is not None:
         recycle_custom_bg = cv2.resize(recycle_custom_bg, (window_width, window_height))
     else:
-        recycle_custom_bg = recycle_bg
+        recycle_custom_bg = recycle_bg # 使用load_images裡的預設回收背景
 
     # 角色尺寸
     std_h, std_w = std_frames_left[0][0].shape[:2] 
 
-    # 定義垃圾矩陣
+    # 定義垃圾矩陣 - **修正從這裡開始**
     garbage_matrix = [
-        {"file": "bottle_01.png", "type": "other"},
-        {"file": "box.png", "type": "paper"},
-        {"file": "chips.png", "type": "garbage"},
-        {"file": "cola.png", "type": "other"},
-        {"file": "garbage_bag_01.png", "type": "garbage"},
-        {"file": "Mai_box.png", "type": "paper"},
-        {"file": "milk_box.png", "type": "paper"},
-        {"file": "pepsi_can.png", "type": "iron"},
-        {"file": "straw_01.png", "type": "garbage"},
-        {"file": "tissue_01.png", "type": "garbage"},
-        {"file": "shell_01.png", "type": "shell"}, 
-        {"file": "shell_02.png", "type": "shell"}  
+        {"file": "bottle_01.png", "type": "other"},     # 寶特瓶 (塑膠) -> 其他
+        {"file": "box.png", "type": "paper"},          # 紙箱 -> 紙類
+        {"file": "chips.png", "type": "garbage"},      # 零食袋 -> 一般垃圾
+        {"file": "cola.png", "type": "iron"},          # **修正：假設 cola.png 是鋁罐 -> 鐵類**
+        {"file": "garbage_bag_01.png", "type": "garbage"}, # 垃圾袋 -> 一般垃圾
+        {"file": "Mai_box.png", "type": "paper"},      # 麥當勞盒子 -> 紙類
+        {"file": "milk_box.png", "type": "paper"},     # 牛奶盒 -> 紙類
+        {"file": "pepsi_can.png", "type": "iron"},      # 汽水罐 -> 鐵類
+        {"file": "straw_01.png", "type": "garbage"},   # **修正：吸管 -> 一般垃圾**
+        {"file": "tissue_01.png", "type": "garbage"},  # 衛生紙 -> 一般垃圾
+        {"file": "shell_01.png", "type": "shell"},      # 貝殼 -> 貝殼類
+        {"file": "shell_02.png", "type": "shell"}       # 貝殼 -> 貝殼類
     ]
+    # **修正結束**
 
     # 載入所有垃圾圖像
     garbage_images = {}
@@ -172,15 +173,14 @@ def beach_game(window_name):
         if os.path.exists(img_path):
             img = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
             if img is not None:
-                img = cv2.resize(img, None, fx=0.8, fy=0.8)
+                img = cv2.resize(img, None, fx=0.8, fy=0.8) # 調整大小
                 garbage_images[item["file"]] = img
         
     # 如果沒有成功載入任何垃圾圖像，創建一個預設垃圾
     if not garbage_images:
         default_garbage = np.full((30, 20, 4), (0, 255, 0, 255), dtype=np.uint8)
         garbage_images["default.png"] = default_garbage
-        garbage_matrix = [{"file": "default.png", "type": "一般"}]
-
+        garbage_matrix = [{"file": "default.png", "type": "一般"}] # 確保有預設垃圾類型
 
     # 創建長背景
     total_width = window_width * len(backgrounds)
@@ -235,7 +235,7 @@ def beach_game(window_name):
     is_dragging = False
     dragging_garbage_pos = [0, 0]  # 被拖拉的垃圾位置
 
-    # 垃圾桶位置和類型映射
+    # 垃圾桶位置和類型映射 - **這部分不需要修改，因為類型名稱與 garbage_matrix 保持一致**
     garbage_cans = [
         {"range": [300, 450, 420, 660], "type": "other", "bg": "other_open", "score_multiplier": 1},
         {"range": [500, 650, 420, 660], "type": "garbage", "bg": "garbage_open", "score_multiplier": 1},
@@ -243,6 +243,7 @@ def beach_game(window_name):
         {"range": [915, 1075, 420, 660], "type": "iron", "bg": "iron_open", "score_multiplier": 1},
         {"range": [1180, 1280, 420, 660], "type": "shell", "bg": "garbage_can_close", "score_multiplier": 2} 
     ]
+    # **修正結束**
 
     # 角色動畫變數
     current_frame = 0
@@ -269,7 +270,7 @@ def beach_game(window_name):
                 # 開始拖拉垃圾
                 if collected_garbage and not is_dragging:
                     is_dragging = True
-                    if collected_garbage:
+                    if collected_garbage: # 確保有垃圾可拖曳
                         dragging_garbage_pos = [x, y]
             
             elif event == cv2.EVENT_MOUSEMOVE:
@@ -282,10 +283,11 @@ def beach_game(window_name):
                 if is_dragging and collected_garbage: 
                     is_dragging = False
                     
-                    garbage_type = collected_garbage[-1].garbage_type
+                    garbage_type = collected_garbage[-1].garbage_type # 獲取最上層垃圾的類型
                     dropped_correctly = False 
                     for can in garbage_cans:
                         can_x_min, can_x_max, can_y_min, can_y_max = can["range"]
+                        # 檢查滑鼠釋放點是否在垃圾桶範圍內
                         if can_x_min <= x <= can_x_max and can_y_min <= y <= can_y_max:
                             # 檢查類型是否匹配
                             if garbage_type == can["type"]:
@@ -300,13 +302,13 @@ def beach_game(window_name):
                                     wrong_sound.play()
                                 dropped_correctly = True 
                             
-                            # 無論是否匹配，都移除垃圾
+                            # 無論是否匹配，都移除垃圾（因為已經嘗試分類）
                             collected_garbage.pop()
-                            break 
+                            break # 找到匹配的垃圾桶後就跳出迴圈
 
                     # 如果沙灘上沒有垃圾，且 collected_garbage 也清空了，則遊戲結束
                     if len([item for item in garbage_items if item.visible]) == 0 and not collected_garbage:
-                         game_over = True
+                            game_over = True
                 
     cv2.setMouseCallback(window_name, mouse_callback)
 
@@ -337,10 +339,10 @@ def beach_game(window_name):
             # 但我們仍需要檢查返回遊戲區域的指令
             if keyboard.is_pressed('down') or keyboard.is_pressed('s'):
                 in_recycle_area = False
-                view_offset = max_view_offset
-                character_x = window_width - std_w - 50 
+                view_offset = max_view_offset # 回到海灘最右側
+                character_x = window_width - std_w - 50 # 讓角色出現在右側，以便往左走
                 is_moving = True 
-        else:
+        else: # 在海灘區域
             world_pos = view_offset + character_x
             
             is_moving = (
@@ -357,31 +359,33 @@ def beach_game(window_name):
             
             if keyboard.is_pressed('left') or keyboard.is_pressed('a'):
                 facing_right = False 
-                if world_pos <= left_area_end:
+                if world_pos <= left_area_end: # 角色在最左邊區域，只移動角色
                     character_x = max(0, character_x - step)
-                elif world_pos >= right_area_start:
+                elif world_pos >= right_area_start: # 角色在最右邊區域，只移動角色
                     character_x = max(character_x - step, 0)
-                else:
+                else: # 角色在中間區域，滾動背景
                     view_offset = max(0, view_offset - step)
                     character_x = character_center_x 
             
             if keyboard.is_pressed('right') or keyboard.is_pressed('d'):
                 facing_right = True 
-                if world_pos < left_area_end:
+                if world_pos < left_area_end: # 角色在最左邊區域
                     new_x = character_x + step
                     if view_offset == 0 and new_x + view_offset >= left_area_end:
+                        # 如果角色移動到會導致背景滾動的點，開始滾動背景
                         view_offset = new_x + view_offset - left_area_end
                         character_x = character_center_x
                     else:
                         character_x = min(window_width - std_w, new_x)
-                elif world_pos >= right_area_start:
+                elif world_pos >= right_area_start: # 角色在最右邊區域
                     if character_x + step >= window_width - std_w:
-                        in_recycle_area = True
+                        in_recycle_area = True # 進入回收區
                         # 進入回收區時，不再設定角色顯示位置，因為它會隱藏
                     else:
                         character_x = min(character_x + step, window_width - std_w)
-                else:
+                else: # 角色在中間區域，滾動背景
                     if view_offset + step + character_center_x >= right_area_start:
+                        # 如果背景滾動會超過最右邊界，固定背景，移動角色
                         character_x = right_area_start - view_offset
                         character_x = min(character_x, window_width - std_w)
                     else:
@@ -393,14 +397,14 @@ def beach_game(window_name):
         if not in_recycle_area:
             if is_moving:
                 frame_counter += 1
-                if frame_counter >= 3: 
+                if frame_counter >= 3: # 控制動畫速度
                     frame_counter = 0
                     current_frame = (current_frame + 1) % (len(std_frames_right) if facing_right else len(std_frames_left))
                     if facing_right:
                         std_rgb, alpha_mask = std_frames_right[current_frame]
                     else:
                         std_rgb, alpha_mask = std_frames_left[current_frame]
-            else:
+            else: # 靜止時顯示第一幀
                 current_frame = 0
                 if facing_right:
                     std_rgb, alpha_mask = std_frames_right[current_frame]
@@ -411,25 +415,28 @@ def beach_game(window_name):
         view_frame = np.zeros((window_height, window_width, 3), dtype=np.uint8)
 
         if in_recycle_area:
-            current_bg = 'default' 
+            current_bg = 'default' # 預設關閉的垃圾桶背景
+            # 根據滑鼠位置判斷是否顯示打開的垃圾桶背景
             for can in garbage_cans:
                 can_x_min, can_x_max, can_y_min, can_y_max = can["range"]
                 if can_x_min <= mouse_x <= can_x_max and can_y_min <= mouse_y <= can_y_max:
                     current_bg = can["bg"]
                     break
-                    
+            
+            # 繪製回收區背景
             if current_bg in recycle_backgrounds and recycle_backgrounds[current_bg] is not None and recycle_backgrounds[current_bg].shape[:2] == (window_height, window_width):
                 view_frame[:] = recycle_backgrounds[current_bg]
-            else:
+            else: # 如果特定背景載入失敗，使用備用背景
                 view_frame[:] = recycle_custom_bg 
             
-            # 顯示頂端垃圾
+            # 顯示頂端垃圾 (被收集的垃圾)
             if collected_garbage:
-                top_garbage = collected_garbage[-1]
+                top_garbage = collected_garbage[-1] # 取得最上層（最近收集）的垃圾
                 
                 matched_garbage_info = None
+                # 尋找該垃圾類型在 garbage_matrix 中的原始資訊，以便載入 X3 圖片
                 for item_info in garbage_matrix:
-                    if item_info["type"] == top_garbage.garbage_type:
+                    if item_info["type"] == top_garbage.garbage_type and garbage_images.get(item_info["file"]) is top_garbage.image:
                         matched_garbage_info = item_info
                         break
                 
@@ -437,67 +444,75 @@ def beach_game(window_name):
                 if matched_garbage_info:
                     garbage_file = matched_garbage_info["file"]
                     x3_path = f'img/X3garbage/{garbage_file}'
-                    if os.path.exists(x3_path):
+                    if os.path.exists(x3_path): # 嘗試載入 3 倍大小的圖片
                         garbage_img = cv2.imread(x3_path, cv2.IMREAD_UNCHANGED)
-                        if garbage_img is None:  
+                        if garbage_img is None:  # 如果 X3 圖片載入失敗，則將原圖放大
                             garbage_img = top_garbage.image
                             garbage_img = cv2.resize(garbage_img, None, fx=3, fy=3, interpolation=cv2.INTER_NEAREST)
-                    else:  
+                    else: # 如果沒有 X3 圖片，則將原圖放大
                         garbage_img = top_garbage.image
                         garbage_img = cv2.resize(garbage_img, None, fx=3, fy=3, interpolation=cv2.INTER_NEAREST)
-                else: 
+                else: # 如果找不到匹配資訊 (例如預設垃圾)，也將原圖放大
                     garbage_img = top_garbage.image
                     garbage_img = cv2.resize(garbage_img, None, fx=3, fy=3, interpolation=cv2.INTER_NEAREST)
                 
                 if garbage_img is not None: 
                     garbage_h, garbage_w = garbage_img.shape[:2]
-                    if is_dragging:
+                    if is_dragging: # 如果正在拖曳，使用滑鼠位置
                         g_x, g_y = dragging_garbage_pos[0] - garbage_w // 2, dragging_garbage_pos[1] - garbage_h // 2
-                    else:
+                    else: # 如果沒有拖曳，固定顯示在右上角
                         g_x, g_y = 1140, 30
-                        dragging_garbage_pos = [g_x + garbage_w // 2, g_y + garbage_h // 2]
+                        dragging_garbage_pos = [g_x + garbage_w // 2, g_y + garbage_h // 2] # 更新拖曳位置，使其與固定位置同步
                     
+                    # 確保垃圾圖片在螢幕範圍內
                     g_x = max(0, min(g_x, window_width - garbage_w))
                     g_y = max(0, min(g_y, window_height - garbage_h))
                     
-                    if garbage_img.shape[2] == 4:  
+                    # 繪製帶 Alpha 通道的垃圾圖片
+                    if garbage_img.shape[2] == 4:  # 如果有 Alpha 通道
                         alpha = garbage_img[:, :, 3].astype(float) / 255.0
                         for c in range(3):
                             view_frame[g_y:g_y+garbage_h, g_x:g_x+garbage_w, c] = (
                                 alpha * garbage_img[:, :, c] +
                                 (1 - alpha) * view_frame[g_y:g_y+garbage_h, g_x:g_x+garbage_w, c]
                             )
-                    else:
+                    else: # 沒有 Alpha 通道直接覆蓋
                         view_frame[g_y:g_y+garbage_h, g_x:g_x+garbage_w] = garbage_img[:, :, :3]
                     
+                    # 顯示垃圾類型文字
                     cv2.putText(view_frame, f'Type: {top_garbage.garbage_type}', (10, 190), font, 1, (0, 0, 0), 2)
             
+            # 顯示回收區提示文字
             if collected_garbage:
                 cv2.putText(view_frame, "Drag garbage to the correct bin", (window_width//2 - 200, 100), font, 1, (0, 0, 0), 2)
             else:
                 cv2.putText(view_frame, "No garbage collected", (window_width//2 - 150, 100), font, 1, (0, 0, 0), 2)
 
-        else: # 遊戲區域
+        else: # 遊戲區域 (海灘)
             view_frame = long_bg[:, view_offset:view_offset + window_width].copy()
             
+            # 繪製海灘上的垃圾
             for item in garbage_items:
                 if item.visible:
                     item_x = item.x - view_offset
                     item_image = item.image
                     item_h, item_w = item_image.shape[:2]
                     
+                    # 檢查垃圾是否在當前視窗範圍內
                     if -item_w < item_x < window_width:
-                        character_lower_quarter_y = character_y + int(std_h * 3 / 4)
+                        # 碰撞檢測：角色下半部分與垃圾的碰撞
+                        character_lower_quarter_y = character_y + int(std_h * 3 / 4) # 取角色下四分之一的高度
                         character_lower_quarter_h = std_h - int(std_h * 3 / 4)
 
                         if (character_x < item_x + item_w and
                                 character_x + std_w > item_x and
                                 character_lower_quarter_y < item.y + item_h and
                                 character_lower_quarter_y + character_lower_quarter_h > item.y):
-                            item.visible = False
+                            item.visible = False # 垃圾被收集
                             collected_garbage.append(item)
-                            continue
+                            continue # 已經被收集，跳過繪製
                         
+                        # 繪製可見的垃圾
                         x_start = max(0, item_x)
                         y_start = max(0, item.y)
                         x_end = min(item_x + item_w, window_width)
@@ -507,7 +522,7 @@ def beach_game(window_name):
                             img_start_x = 0 if item_x >= 0 else -item_x
                             img_start_y = 0 if item.y >= 0 else -item.y
                             
-                            if item_image.shape[2] == 4:  
+                            if item_image.shape[2] == 4:  # 如果有 Alpha 通道
                                 alpha = item_image[img_start_y:img_start_y+(y_end-y_start), 
                                                     img_start_x:img_start_x+(x_end-x_start), 3].astype(float) / 255.0
                                 for c in range(3):
@@ -516,10 +531,11 @@ def beach_game(window_name):
                                                             img_start_x:img_start_x+(x_end-x_start), c] +
                                         (1 - alpha) * view_frame[y_start:y_end, x_start:x_end, c]
                                     )
-                            else:
+                            else: # 沒有 Alpha 通道直接覆蓋
                                 view_frame[y_start:y_end, x_start:x_end] = item_image[img_start_y:img_start_y+(y_end-y_start), 
                                                                                         img_start_x:img_start_x+(x_end-x_start), :3]
 
+            # 檢查遊戲是否結束 (海灘上沒有可見垃圾且沒有已收集垃圾)
             if len([item for item in garbage_items if item.visible]) == 0 and not collected_garbage and not in_recycle_area:
                 game_over = True 
         
@@ -570,9 +586,31 @@ def main():
         print("警告: final.png 不存在。請在程式相同目錄下放置 final.png 圖片，或者程式將會使用白色背景代替。")
         temp_final_img = np.full((810, 1350, 3), (200, 200, 200), dtype=np.uint8) 
         cv2.putText(temp_final_img, "Final Screen Placeholder", (400, 400), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
-        
+        cv2.imwrite('final.png', temp_final_img)
+
+    # 確保所有回收桶背景圖都存在，否則創建佔位圖
+    recycle_bg_paths = {
+        'default': 'recycle_background/garbage_can_close.jpg',
+        'other_open': 'recycle_background/other_open.jpg',
+        'garbage_open': 'recycle_background/garbage_open.jpg',
+        'paper_open': 'recycle_background/paper_open.jpg',
+        'iron_open': 'recycle_background/iron_open.jpg',
+    }
+    for key, path in recycle_bg_paths.items():
+        if not os.path.exists(path):
+            print(f"警告: {path} 不存在。請在程式相同目錄下放置該圖片，或者程式將會使用預設灰色背景代替。")
+            temp_img = np.full((810, 1350, 3), (150, 150, 150), dtype=np.uint8)
+            cv2.putText(temp_img, f"{key.replace('_open', '').replace('_close', '')} Bin Placeholder", (400, 400), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
+            cv2.imwrite(path, temp_img)
+            
+    # 確保 img/X3garbage 資料夾存在
+    if not os.path.exists('img/X3garbage'):
+        os.makedirs('img/X3garbage')
+        print("已創建 'img/X3garbage' 資料夾。如果需要顯示放大版垃圾圖片，請將對應的圖片放入此資料夾中。")
+
+
     from menu import show_menu 
-    show_menu(window_name)
+    show_menu(window_name) # 假設這會處理遊戲啟動
     beach_game(window_name)
     cv2.destroyAllWindows()
 
