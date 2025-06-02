@@ -165,7 +165,7 @@ def beach_game(window_name):
         {"file": "bottle_01.png", "type": "other"},
         {"file": "box.png", "type": "paper"},
         {"file": "chips.png", "type": "garbage"},
-        {"file": "cola.png", "type": "iron"},
+        {"file": "cola.png", "type": "other"},
         {"file": "garbage_bag_01.png", "type": "garbage"},
         {"file": "Mai_box.png", "type": "papre"},
         {"file": "milk_box.png", "type": "paper"},
@@ -173,7 +173,7 @@ def beach_game(window_name):
         {"file": "straw_01.png", "type": "garbage"},
         {"file": "tissue_01.png", "type": "garbage"},
         {"file": "shell_01.png", "type": "shell"},
-        {"file": "shell_02.png", "type": "sgell"}
+        {"file": "shell_02.png", "type": "shell"}
     ]
 
     # 載入所有垃圾圖像
