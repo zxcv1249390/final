@@ -512,10 +512,13 @@ def beach_game(window_name):
                     
                     if -item_w < item_x < window_width:
                         # 碰撞檢測
-                        if (character_x < item_x + item_w and 
-                            character_x + std_w > item_x and
-                            character_y < item.y + item_h and 
-                            character_y + std_h > item.y):
+                        character_lower_quarter_y = character_y + int(std_h * 3 / 4)
+                        character_lower_quarter_h = std_h - int(std_h * 3 / 4)
+
+                        if (character_x < item_x + item_w and
+                                character_x + std_w > item_x and
+                                character_lower_quarter_y < item.y + item_h and
+                                character_lower_quarter_y + character_lower_quarter_h > item.y):
                             item.visible = False
                             collected_garbage.append(item)
                             continue
