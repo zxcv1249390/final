@@ -4,6 +4,7 @@ import random
 import keyboard
 import os
 import pygame
+import time # 導入 time 模組
 
 def load_images(window_width, window_height):
     # 載入背景圖片
@@ -154,7 +155,7 @@ def beach_game(window_name):
         {"file": "bottle_01.png", "type": "other"},     # 寶特瓶 (塑膠) -> 其他
         {"file": "box.png", "type": "paper"},          # 紙箱 -> 紙類
         {"file": "chips.png", "type": "garbage"},      # 零食袋 -> 一般垃圾
-        {"file": "cola.png", "type": "iron"},          # **修正：假設 cola.png 是鋁罐 -> 鐵類**
+        {"file": "cola.png", "type": "other"},          # **修正：假設 cola.png 是鋁罐 -> 鐵類**
         {"file": "garbage_bag_01.png", "type": "garbage"}, # 垃圾袋 -> 一般垃圾
         {"file": "Mai_box.png", "type": "paper"},      # 麥當勞盒子 -> 紙類
         {"file": "milk_box.png", "type": "paper"},     # 牛奶盒 -> 紙類
@@ -195,7 +196,7 @@ def beach_game(window_name):
         return x, y
 
     garbage_items = []
-    garbage_count = 50
+    garbage_count = 60
     min_dist = 100
 
     # 生成垃圾
@@ -228,7 +229,7 @@ def beach_game(window_name):
     character_y = 600
     collected_garbage = []
     score = 0
-    step = 10
+    step = 7
     font = cv2.FONT_HERSHEY_SIMPLEX
 
     # 拖拉垃圾相關變數
@@ -237,11 +238,11 @@ def beach_game(window_name):
 
     # 垃圾桶位置和類型映射 - **這部分不需要修改，因為類型名稱與 garbage_matrix 保持一致**
     garbage_cans = [
-        {"range": [300, 450, 420, 660], "type": "other", "bg": "other_open", "score_multiplier": 1},
+        {"range": [300, 450, 420, 660], "type": "other", "bg": "other_open", "score_multiplier": 2},
         {"range": [500, 650, 420, 660], "type": "garbage", "bg": "garbage_open", "score_multiplier": 1},
-        {"range": [700, 860, 420, 660], "type": "paper", "bg": "paper_open", "score_multiplier": 1},
-        {"range": [915, 1075, 420, 660], "type": "iron", "bg": "iron_open", "score_multiplier": 1},
-        {"range": [1180, 1280, 420, 660], "type": "shell", "bg": "garbage_can_close", "score_multiplier": 2} 
+        {"range": [700, 860, 420, 660], "type": "paper", "bg": "paper_open", "score_multiplier": 2},
+        {"range": [915, 1075, 420, 660], "type": "iron", "bg": "iron_open", "score_multiplier": 4},
+        {"range": [1180, 1280, 420, 660], "type": "shell", "bg": "garbage_can_close", "score_multiplier": 5} 
     ]
     # **修正結束**
 
@@ -261,8 +262,12 @@ def beach_game(window_name):
     
     mouse_x, mouse_y = 0, 0
 
+    # 遊戲計時器變數
+    start_time = time.time() # 遊戲開始時間
+    total_time_spent = 0     # 遊戲總花費時間
+    
     def mouse_callback(event, x, y, flags, param):
-        nonlocal mouse_x, mouse_y, collected_garbage, score, is_dragging, dragging_garbage_pos, game_over
+        nonlocal mouse_x, mouse_y, collected_garbage, score, is_dragging, dragging_garbage_pos, game_over, total_time_spent
         mouse_x, mouse_y = x, y
         
         if in_recycle_area:
@@ -291,13 +296,13 @@ def beach_game(window_name):
                         if can_x_min <= x <= can_x_max and can_y_min <= y <= can_y_max:
                             # 檢查類型是否匹配
                             if garbage_type == can["type"]:
-                                score_to_add = 1 * can.get("score_multiplier", 1) 
+                                score_to_add = 100 * can.get("score_multiplier", 1) 
                                 score += score_to_add
                                 if ding_sound:
                                     ding_sound.play()
                                 dropped_correctly = True 
                             else:
-                                score -= 1
+                                score -= 600
                                 if wrong_sound:
                                     wrong_sound.play()
                                 dropped_correctly = True 
@@ -309,6 +314,7 @@ def beach_game(window_name):
                     # 如果沙灘上沒有垃圾，且 collected_garbage 也清空了，則遊戲結束
                     if len([item for item in garbage_items if item.visible]) == 0 and not collected_garbage:
                             game_over = True
+                            total_time_spent = time.time() - start_time # 記錄遊戲結束時間
                 
     cv2.setMouseCallback(window_name, mouse_callback)
 
@@ -321,11 +327,23 @@ def beach_game(window_name):
         if game_over:
             # 遊戲結束畫面
             display_frame = final_image.copy()
+            
+            # 顯示分數
             score_text = f"Final Score: {score}"
             text_size = cv2.getTextSize(score_text, font, 2, 3)[0] 
             text_x = (window_width - text_size[0]) // 2
-            text_y = (window_height + text_size[1]) // 2
-            cv2.putText(display_frame, score_text, (text_x, text_y), font, 2, (0, 0, 255), 3) 
+            text_y = (window_height + text_size[1]) // 2 - 50 # 稍微向上移動，為時間留出空間
+            cv2.putText(display_frame, score_text, (text_x, text_y), font, 2, (0, 100, 255), 3) 
+
+            # 顯示時間
+            minutes = int(total_time_spent // 60)
+            seconds = int(total_time_spent % 60)
+            time_text = f"Time spent: {minutes} : {seconds:02d}" # :02d 確保秒數兩位數顯示
+            time_text_size = cv2.getTextSize(time_text, font, 1.5, 2)[0]
+            time_text_x = (window_width - time_text_size[0]) // 2
+            time_text_y = text_y + text_size[1] + 30 # 在分數下方顯示
+            cv2.putText(display_frame, time_text, (time_text_x, time_text_y), font, 1.5, (0, 0, 0), 2)
+            
             cv2.imshow(window_name, display_frame)
             cv2.waitKey(5) 
 
@@ -436,7 +454,10 @@ def beach_game(window_name):
                 matched_garbage_info = None
                 # 尋找該垃圾類型在 garbage_matrix 中的原始資訊，以便載入 X3 圖片
                 for item_info in garbage_matrix:
-                    if item_info["type"] == top_garbage.garbage_type and garbage_images.get(item_info["file"]) is top_garbage.image:
+                    # 這裡需要一個更精確的匹配方式，可能透過檔案名或唯一ID來識別垃圾
+                    # 如果 top_garbage.image 是 garbage_images[item_info["file"]] 的原始引用，這種方式是有效的
+                    # 否則可能需要傳遞原始檔案名或更唯一的ID
+                    if item_info["type"] == top_garbage.garbage_type and item_info["file"] in garbage_images and np.array_equal(garbage_images[item_info["file"]], top_garbage.image):
                         matched_garbage_info = item_info
                         break
                 
@@ -500,7 +521,6 @@ def beach_game(window_name):
                     
                     # 檢查垃圾是否在當前視窗範圍內
                     if -item_w < item_x < window_width:
-                        # 碰撞檢測：角色下半部分與垃圾的碰撞
                         character_lower_quarter_y = character_y + int(std_h * 3 / 4) # 取角色下四分之一的高度
                         character_lower_quarter_h = std_h - int(std_h * 3 / 4)
 
@@ -508,6 +528,8 @@ def beach_game(window_name):
                                 character_x + std_w > item_x and
                                 character_lower_quarter_y < item.y + item_h and
                                 character_lower_quarter_y + character_lower_quarter_h > item.y):
+                            
+                            ding_sound.play()
                             item.visible = False # 垃圾被收集
                             collected_garbage.append(item)
                             continue # 已經被收集，跳過繪製
@@ -538,6 +560,7 @@ def beach_game(window_name):
             # 檢查遊戲是否結束 (海灘上沒有可見垃圾且沒有已收集垃圾)
             if len([item for item in garbage_items if item.visible]) == 0 and not collected_garbage and not in_recycle_area:
                 game_over = True 
+                total_time_spent = time.time() - start_time # 記錄遊戲結束時間
         
         # 繪製角色 - 只有當不在回收區域時才繪製角色
         if not in_recycle_area:
@@ -601,6 +624,7 @@ def main():
             print(f"警告: {path} 不存在。請在程式相同目錄下放置該圖片，或者程式將會使用預設灰色背景代替。")
             temp_img = np.full((810, 1350, 3), (150, 150, 150), dtype=np.uint8)
             cv2.putText(temp_img, f"{key.replace('_open', '').replace('_close', '')} Bin Placeholder", (400, 400), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
+            cv2.imwrite(path, temp_img)
             
     # 確保 img/X3garbage 資料夾存在
     if not os.path.exists('img/X3garbage'):
