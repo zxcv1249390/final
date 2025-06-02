@@ -247,7 +247,7 @@ def beach_game(window_name):
     character_y = 600
     collected_garbage = []
     score = 0
-    step = 3
+    step = 10
     font = cv2.FONT_HERSHEY_SIMPLEX
 
     # 拖拉垃圾相關變數
