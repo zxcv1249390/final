@@ -536,8 +536,8 @@ def beach_game(window_name):
                     
                     # 檢查垃圾是否在當前視窗範圍內
                     if -item_w < item_x < window_width:
-                        character_lower_quarter_y = character_y + int(std_h * 3 / 4) # 取角色下四分之一的高度
-                        character_lower_quarter_h = std_h - int(std_h * 3 / 4)
+                        character_lower_quarter_y = character_y + int(std_h * 9 / 10) # 取角色下四分之一的高度
+                        character_lower_quarter_h = std_h - int(std_h * 9 / 10)
 
                         if (character_x < item_x + item_w and
                                 character_x + std_w > item_x and
