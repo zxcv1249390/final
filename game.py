@@ -570,8 +570,7 @@ def main():
         print("警告: final.png 不存在。請在程式相同目錄下放置 final.png 圖片，或者程式將會使用白色背景代替。")
         temp_final_img = np.full((810, 1350, 3), (200, 200, 200), dtype=np.uint8) 
         cv2.putText(temp_final_img, "Final Screen Placeholder", (400, 400), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
-        cv2.imwrite('final.png', temp_final_img)
-
+        
     from menu import show_menu 
     show_menu(window_name)
     beach_game(window_name)
