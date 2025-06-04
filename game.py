@@ -228,7 +228,7 @@ def beach_game(window_name):
         return x, y
 
     garbage_items = []
-    garbage_count = 50
+    garbage_count = 5
     min_dist = 100
 
     # 生成垃圾
@@ -389,6 +389,7 @@ def beach_game(window_name):
 
             accuracy_text = f"Accuracy : {accuracy:.1f}%" # 格式化為一位小數
             accuracy_text_size = cv2.getTextSize(accuracy_text, font, 1.5, 2)[0]
+            accuracy_text_x = (window_width - accuracy_text_size[0]) // 2 
             accuracy_text_y = time_text_y + time_text_size[1] + 30 # 在時間下方顯示
             cv2.putText(display_frame, accuracy_text, (accuracy_text_x, accuracy_text_y), font, 1.5, (0, 0, 255), 2)
 
